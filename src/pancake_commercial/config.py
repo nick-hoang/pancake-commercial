@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 from .models import AlertConfig, AppConfig, PageConfig, RuleConfig, RuntimeConfig, StaffMapping
+
+
+ENV_PATTERN = re.compile(r"^\$\{([A-Z0-9_]+)\}$")
 
 
 def _load_json(path: Path) -> dict:
@@ -22,12 +26,25 @@ def load_config(path: str | None = None) -> AppConfig:
     return _load_from_env()
 
 
+def _resolve_secret(value: str | None, env_key: str | None = None) -> str | None:
+    if value is None:
+        return os.getenv(env_key) if env_key else None
+    if not isinstance(value, str):
+        return value
+    match = ENV_PATTERN.match(value.strip())
+    if match:
+        return os.getenv(match.group(1))
+    if env_key and value.strip() == "":
+        return os.getenv(env_key)
+    return value
+
+
 def _parse_config(data: dict) -> AppConfig:
     pages = [
         PageConfig(
             name=page.get("name") or page["page_id"],
             page_id=page["page_id"],
-            page_access_token=page["page_access_token"],
+            page_access_token=_resolve_secret(page.get("page_access_token"), "PANCAKE_PAGE_ACCESS_TOKEN") or "",
             enabled=page.get("enabled", True),
             timezone=page.get("timezone", "Asia/Bangkok"),
         )
@@ -68,8 +85,8 @@ def _parse_config(data: dict) -> AppConfig:
         ),
         alerts=AlertConfig(
             provider=alert_data.get("provider", "noop"),
-            telegram_bot_token=alert_data.get("telegram_bot_token"),
-            telegram_chat_id=alert_data.get("telegram_chat_id"),
+            telegram_bot_token=_resolve_secret(alert_data.get("telegram_bot_token"), "TELEGRAM_BOT_TOKEN"),
+            telegram_chat_id=_resolve_secret(alert_data.get("telegram_chat_id"), "TELEGRAM_CHAT_ID"),
         ),
     )
 

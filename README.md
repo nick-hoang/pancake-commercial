@@ -49,28 +49,74 @@ Tùy chọn (khuyến nghị):
 1. Cài đặt/copy skill vào đường dẫn skill của OpenClaw.
 2. Cho agent OpenClaw đọc `SKILL.md`.
 3. Agent sẽ yêu cầu người dùng cung cấp các thông số triển khai còn thiếu.
-4. Tạo file cấu hình riêng từ `templates/config.pages.example.json`.
-5. Mở rộng `templates/pancake_monitor_template.py` thành script production.
-6. Chạy test/debug trước, sau đó gắn cron.
+4. Tạo file cấu hình riêng như `config.production.json` từ `templates/config.pages.example.json`.
+5. Đặt secrets thật vào biến môi trường thay vì commit vào file JSON.
+6. Chạy smoke test bằng CLI trước khi bật monitor hoặc cron.
 
 ### Ví dụ cấu hình
 ```json
 {
-  "pages": {
-    "example-page": {
+  "pages": [
+    {
+      "name": "example-page",
       "page_id": "YOUR_PAGE_ID",
-      "page_access_token": "YOUR_PAGE_ACCESS_TOKEN"
+      "page_access_token": "${PANCAKE_PAGE_ACCESS_TOKEN}",
+      "enabled": true,
+      "timezone": "Asia/Bangkok"
+    }
+  ],
+  "staff_mapping": {
+    "SALE_A": {
+      "name": "Sale A",
+      "tag_id": "101",
+      "alert_target": "@sale_a",
+      "user_id": "OPTIONAL_PANCAKE_USER_ID_A",
+      "escalation_targets": ["SALE_B", "SALE_C"]
     }
   },
-  "staff": {
-    "SALE_A": {
-      "telegram": "@sale_a",
-      "tag_id": 101,
-      "name": "Sale A"
-    }
+  "runtime": {
+    "dry_run": true,
+    "state_path": ".pancake_monitor_state.sqlite",
+    "log_level": "INFO"
+  },
+  "alerts": {
+    "provider": "telegram",
+    "telegram_bot_token": "${TELEGRAM_BOT_TOKEN}",
+    "telegram_chat_id": "${TELEGRAM_CHAT_ID}"
   }
 }
 ```
+
+### Tạo `config.production.json`
+1. Sao chép `templates/config.pages.example.json` thành `config.production.json`.
+2. Điền `page_id`, `staff_mapping`, `tag_id`, `user_id` nếu có.
+3. Giữ các giá trị secret ở dạng placeholder `${ENV_NAME}` hoặc để trống rồi lấy từ env.
+4. Không commit file config production thật.
+
+Ví dụ PowerShell:
+```powershell
+python -m pip install -e .
+Copy-Item templates\config.pages.example.json config.production.json
+$env:PANCAKE_PAGE_ACCESS_TOKEN="YOUR_PAGE_ACCESS_TOKEN"
+$env:TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+$env:TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+```
+
+### Smoke test
+Sau khi tạo config và set env, chạy:
+
+```powershell
+python -m pancake_commercial --config config.production.json healthcheck
+python -m pancake_commercial --config config.production.json tags-list
+python -m pancake_commercial --config config.production.json users-list
+python -m pancake_commercial --config config.production.json conversations-list
+python -m pancake_commercial --config config.production.json monitor-run-once --dry-run
+```
+
+Ý nghĩa:
+- `healthcheck`: xác nhận token/page dùng được
+- `tags-list`, `users-list`, `conversations-list`: xác nhận các read-only APIs hoạt động
+- `monitor-run-once --dry-run`: chạy một vòng logic nhắc sale nhưng chưa ghi state thật và chưa mutate dữ liệu thật
 
 ### Lưu ý
 - Giữ các bí mật thật bên ngoài repository này.
@@ -144,28 +190,74 @@ This repo is safe to publish only if it does **not** include:
 1. Install/copy the skill into an OpenClaw skill path.
 2. Let the downstream OpenClaw agent read `SKILL.md`.
 3. The agent should request the missing deployment inputs from the user.
-4. Create a private config from `templates/config.pages.example.json`.
-5. Extend `templates/pancake_monitor_template.py` into a production script.
-6. Run tests/debug first, then attach cron.
+4. Create a private `config.production.json` from `templates/config.pages.example.json`.
+5. Put real secrets into environment variables instead of committing them to JSON.
+6. Run CLI smoke tests before enabling the monitor or cron.
 
 ### Example required config
 ```json
 {
-  "pages": {
-    "example-page": {
+  "pages": [
+    {
+      "name": "example-page",
       "page_id": "YOUR_PAGE_ID",
-      "page_access_token": "YOUR_PAGE_ACCESS_TOKEN"
+      "page_access_token": "${PANCAKE_PAGE_ACCESS_TOKEN}",
+      "enabled": true,
+      "timezone": "Asia/Bangkok"
+    }
+  ],
+  "staff_mapping": {
+    "SALE_A": {
+      "name": "Sale A",
+      "tag_id": "101",
+      "alert_target": "@sale_a",
+      "user_id": "OPTIONAL_PANCAKE_USER_ID_A",
+      "escalation_targets": ["SALE_B", "SALE_C"]
     }
   },
-  "staff": {
-    "SALE_A": {
-      "telegram": "@sale_a",
-      "tag_id": 101,
-      "name": "Sale A"
-    }
+  "runtime": {
+    "dry_run": true,
+    "state_path": ".pancake_monitor_state.sqlite",
+    "log_level": "INFO"
+  },
+  "alerts": {
+    "provider": "telegram",
+    "telegram_bot_token": "${TELEGRAM_BOT_TOKEN}",
+    "telegram_chat_id": "${TELEGRAM_CHAT_ID}"
   }
 }
 ```
+
+### Create `config.production.json`
+1. Copy `templates/config.pages.example.json` to `config.production.json`.
+2. Fill in `page_id`, `staff_mapping`, `tag_id`, and `user_id` if available.
+3. Keep secrets as `${ENV_NAME}` placeholders or read them entirely from env.
+4. Do not commit the real production config.
+
+PowerShell example:
+```powershell
+python -m pip install -e .
+Copy-Item templates\config.pages.example.json config.production.json
+$env:PANCAKE_PAGE_ACCESS_TOKEN="YOUR_PAGE_ACCESS_TOKEN"
+$env:TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+$env:TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+```
+
+### Smoke test
+After creating the config and setting env vars, run:
+
+```powershell
+python -m pancake_commercial --config config.production.json healthcheck
+python -m pancake_commercial --config config.production.json tags-list
+python -m pancake_commercial --config config.production.json users-list
+python -m pancake_commercial --config config.production.json conversations-list
+python -m pancake_commercial --config config.production.json monitor-run-once --dry-run
+```
+
+What this verifies:
+- `healthcheck`: token/page connectivity
+- `tags-list`, `users-list`, `conversations-list`: read-only API connectivity
+- `monitor-run-once --dry-run`: end-to-end reminder logic without persisting state or mutating live data
 
 ### Notes
 - Keep real secrets outside this repository.

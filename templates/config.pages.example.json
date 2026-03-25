@@ -1,25 +1,57 @@
 {
-  "pages": {
-    "example-page": {
+  "pages": [
+    {
+      "name": "example-page",
       "page_id": "YOUR_PAGE_ID",
-      "page_access_token": "YOUR_PAGE_ACCESS_TOKEN"
+      "page_access_token": "${PANCAKE_PAGE_ACCESS_TOKEN}",
+      "enabled": true,
+      "timezone": "Asia/Bangkok"
     }
-  },
-  "staff": {
+  ],
+  "staff_mapping": {
     "SALE_A": {
-      "telegram": "@sale_a",
-      "tag_id": 101,
-      "name": "Sale A"
+      "name": "Sale A",
+      "tag_id": "101",
+      "alert_target": "@sale_a",
+      "user_id": "OPTIONAL_PANCAKE_USER_ID_A",
+      "escalation_targets": ["SALE_B", "SALE_C"]
     },
     "SALE_B": {
-      "telegram": "@sale_b",
-      "tag_id": 102,
-      "name": "Sale B"
+      "name": "Sale B",
+      "tag_id": "102",
+      "alert_target": "@sale_b",
+      "user_id": "OPTIONAL_PANCAKE_USER_ID_B"
     },
     "SALE_C": {
-      "telegram": "@sale_c",
-      "tag_id": 103,
-      "name": "Sale C"
+      "name": "Sale C",
+      "tag_id": "103",
+      "alert_target": "@sale_c",
+      "user_id": "OPTIONAL_PANCAKE_USER_ID_C"
     }
+  },
+  "rules": {
+    "stage_1_minutes": 20,
+    "stage_2_minutes": 40,
+    "stage_3_minutes": 60,
+    "noise_patterns": [
+      "xin chao",
+      "da",
+      "ok",
+      "vang",
+      "thanks",
+      "thank you"
+    ]
+  },
+  "runtime": {
+    "dry_run": true,
+    "poll_interval_seconds": 300,
+    "state_backend": "sqlite",
+    "state_path": ".pancake_monitor_state.sqlite",
+    "log_level": "INFO"
+  },
+  "alerts": {
+    "provider": "telegram",
+    "telegram_bot_token": "${TELEGRAM_BOT_TOKEN}",
+    "telegram_chat_id": "${TELEGRAM_CHAT_ID}"
   }
 }
