@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 UTC_TZ = timezone.utc
+FIXED_TIMEZONES = {
+    "Asia/Bangkok": timezone(timedelta(hours=7)),
+}
+
+
+def _get_timezone(timezone_name: str):
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        return FIXED_TIMEZONES.get(timezone_name, UTC_TZ)
 
 
 def parse_dt(value: str | None, timezone_name: str = "Asia/Bangkok") -> datetime | None:
@@ -19,7 +29,7 @@ def parse_dt(value: str | None, timezone_name: str = "Asia/Bangkok") -> datetime
         parsed = datetime.fromisoformat(raw)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=UTC_TZ)
-    return parsed.astimezone(ZoneInfo(timezone_name))
+    return parsed.astimezone(_get_timezone(timezone_name))
 
 
 def minutes_waiting(since: datetime, now: datetime | None = None) -> int:
