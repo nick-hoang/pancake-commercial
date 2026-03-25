@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 
 from pancake_commercial.client.base import BaseClient, _normalize_query
+from pancake_commercial.client.page_api_v1 import validate_send_message_payload
+from pancake_commercial.errors import ValidationError
 
 
 class ClientBaseTests(unittest.TestCase):
@@ -31,6 +33,29 @@ class ClientBaseTests(unittest.TestCase):
         self.assertTrue(result["dry_run"])
         self.assertNotIn("secret", result["url"])
         self.assertEqual(result["json_body"]["tag_id"], "1")
+
+    def test_validate_send_message_payload_rejects_message_and_content_ids(self) -> None:
+        with self.assertRaises(ValidationError):
+            validate_send_message_payload(
+                {
+                    "action": "reply_inbox",
+                    "message": "hello",
+                    "content_ids": ["content-1"],
+                }
+            )
+
+    def test_validate_send_message_payload_accepts_reply_comment(self) -> None:
+        validate_send_message_payload(
+            {
+                "action": "reply_comment",
+                "message_id": "comment-1",
+                "message": "reply",
+            }
+        )
+
+    def test_validate_send_message_payload_rejects_missing_private_reply_fields(self) -> None:
+        with self.assertRaises(ValidationError):
+            validate_send_message_payload({"action": "private_replies", "message": "hello"})
 
 
 if __name__ == "__main__":

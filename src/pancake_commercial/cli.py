@@ -100,6 +100,21 @@ def build_parser() -> argparse.ArgumentParser:
     unread.add_argument("--dry-run", action="store_true")
     unread.set_defaults(func=cmd_conversation_mark_unread)
 
+    send = subparsers.add_parser("conversation-send-message")
+    send.add_argument("--page-id")
+    send.add_argument("--conversation-id", required=True)
+    send.add_argument("--action", default="reply_inbox")
+    send.add_argument("--message")
+    send.add_argument("--content-id", action="append")
+    send.add_argument("--sender-id")
+    send.add_argument("--reply-message-id")
+    send.add_argument("--message-id")
+    send.add_argument("--post-id")
+    send.add_argument("--from-id")
+    send.add_argument("--template-id")
+    send.add_argument("--dry-run", action="store_true")
+    send.set_defaults(func=cmd_conversation_send_message)
+
     monitor = subparsers.add_parser("monitor-run-once")
     monitor.add_argument("--page-id")
     monitor.add_argument("--dry-run", action="store_true")
@@ -229,6 +244,36 @@ def cmd_conversation_mark_unread(args, config, logger) -> int:
     page = _get_page(config, args.page_id)
     client = PageApiClientV1(page.page_access_token, logger=logger)
     return _print(client.mark_unread(page.page_id, args.conversation_id, dry_run=args.dry_run or config.runtime.dry_run))
+
+
+def cmd_conversation_send_message(args, config, logger) -> int:
+    page = _get_page(config, args.page_id)
+    client = PageApiClientV1(page.page_access_token, logger=logger)
+    payload = {"action": args.action}
+    if args.message is not None:
+        payload["message"] = args.message
+    if args.content_id:
+        payload["content_ids"] = args.content_id
+    if args.sender_id:
+        payload["sender_id"] = args.sender_id
+    if args.reply_message_id:
+        payload["reply_message_id"] = args.reply_message_id
+    if args.message_id:
+        payload["message_id"] = args.message_id
+    if args.post_id:
+        payload["post_id"] = args.post_id
+    if args.from_id:
+        payload["from_id"] = args.from_id
+    if args.template_id:
+        payload["template_id"] = args.template_id
+    return _print(
+        client.send_message(
+            page.page_id,
+            args.conversation_id,
+            payload,
+            dry_run=args.dry_run or config.runtime.dry_run,
+        )
+    )
 
 
 def cmd_monitor_run_once(args, config, logger) -> int:

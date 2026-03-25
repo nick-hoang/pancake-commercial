@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..errors import ValidationError
 from .base import BaseClient
 
 
@@ -26,6 +27,7 @@ class PageApiClientV1(BaseClient):
         )
 
     def send_message(self, page_id: str, conversation_id: str, payload: dict, *, dry_run: bool = False) -> dict:
+        validate_send_message_payload(payload)
         return self.request(
             "POST",
             f"/pages/{page_id}/conversations/{conversation_id}/messages",
@@ -88,3 +90,35 @@ class PageApiClientV1(BaseClient):
 
     def list_users(self, page_id: str) -> dict:
         return self.request("GET", f"/pages/{page_id}/users", params=self._auth())
+
+
+def validate_send_message_payload(payload: dict) -> None:
+    """Validate send-message payload against the documented Pancake contract."""
+    action = payload.get("action")
+    content_ids = payload.get("content_ids")
+    message = payload.get("message")
+
+    if not action:
+        raise ValidationError("send_message payload requires `action`.")
+
+    if message and content_ids:
+        raise ValidationError("`message` and `content_ids` are mutually exclusive for send_message.")
+
+    if action == "reply_inbox":
+        if not payload.get("template_id") and not message and not content_ids:
+            raise ValidationError("reply_inbox requires `message`, `content_ids`, or `template_id`.")
+        return
+
+    if action == "reply_comment":
+        if not payload.get("message_id"):
+            raise ValidationError("reply_comment requires `message_id`.")
+        if not message and not content_ids:
+            raise ValidationError("reply_comment requires `message` or `content_ids`.")
+        return
+
+    if action == "private_replies":
+        if not payload.get("post_id") or not payload.get("message_id") or not message:
+            raise ValidationError("private_replies requires `post_id`, `message_id`, and `message`.")
+        return
+
+    raise ValidationError(f"Unsupported send_message action: {action}")
