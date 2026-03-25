@@ -13,7 +13,9 @@ from .client.user_api import UserApiClient
 from .config import load_config
 from .errors import PancakeError
 from .logging import configure_logging
-from .runtime.poller import monitor_run_once
+from .runtime.poller import monitor_run_conversation_once, monitor_run_loop as run_monitor_loop, monitor_run_once
+from .runtime.webhook_cache import WebhookPageContextCache
+from .runtime.webhook_server import serve_webhook
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -119,6 +121,18 @@ def build_parser() -> argparse.ArgumentParser:
     monitor.add_argument("--page-id")
     monitor.add_argument("--dry-run", action="store_true")
     monitor.set_defaults(func=cmd_monitor_run_once)
+
+    loop = subparsers.add_parser("monitor-run-loop")
+    loop.add_argument("--page-id")
+    loop.add_argument("--max-iterations", type=int)
+    loop.add_argument("--dry-run", action="store_true")
+    loop.set_defaults(func=cmd_monitor_run_loop)
+
+    webhook = subparsers.add_parser("webhook-serve")
+    webhook.add_argument("--host", default="127.0.0.1")
+    webhook.add_argument("--port", type=int, default=8000)
+    webhook.add_argument("--path", default="/webhook/pancake")
+    webhook.set_defaults(func=cmd_webhook_serve)
 
     return parser
 
@@ -282,3 +296,54 @@ def cmd_monitor_run_once(args, config, logger) -> int:
         config.runtime.dry_run = True
     result = monitor_run_once(config, page)
     return _print(asdict(result))
+
+
+def cmd_monitor_run_loop(args, config, logger) -> int:
+    page = _get_page(config, args.page_id)
+    if args.dry_run:
+        config.runtime.dry_run = True
+    run_monitor_loop(config, page, max_iterations=args.max_iterations)
+    return 0
+
+
+def cmd_webhook_serve(args, config, logger) -> int:
+    cache = WebhookPageContextCache(
+        ttl_seconds=max(60, config.runtime.poll_interval_seconds),
+        logger=logger,
+    )
+
+    def callback(payload: dict) -> None:
+        page = _get_page(config, payload.get("page_id"))
+        data = payload.get("data") or {}
+        raw_conversation = data.get("conversation") or {}
+        conversation_id = raw_conversation.get("id") or raw_conversation.get("conversation_id")
+
+        if conversation_id:
+            result = monitor_run_conversation_once(
+                config,
+                page,
+                raw_conversation,
+                staff_user_ids=cache.get_staff_user_ids(page),
+            )
+        else:
+            result = monitor_run_once(config, page)
+
+        logger.info(
+            "Webhook reconcile finished page_id=%s processed=%s alerted=%s conversation_id=%s",
+            page.page_id,
+            result.processed_conversations,
+            result.alerted_count,
+            conversation_id,
+        )
+
+    serve_webhook(
+        args.host,
+        args.port,
+        args.path,
+        config.runtime.state_path,
+        logger=logger,
+        event_callback=callback,
+    )
+    return 0
+
+

@@ -110,3 +110,4 @@ class MonitorResult:
     processed_conversations: int
     decisions: list[StageDecision] = field(default_factory=list)
     skipped_conversations: int = 0
+    alerted_count: int = 0
