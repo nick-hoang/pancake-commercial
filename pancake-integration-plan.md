@@ -1,6 +1,6 @@
 # Pancake Integration Plan
 
-Tài liệu này chuyển hóa contract trong `references/pancake-api-contract.md` thành kế hoạch scaffold bộ tool thực tế cho repo.
+Tài liệu này chuyển hóa contract trong `pancake-api-contract.md` thành kế hoạch scaffold bộ tool thực tế cho repo.
 
 ## 1. Mục tiêu
 
@@ -18,7 +18,7 @@ thành một gói tích hợp có thể:
 
 ## 2. Nguyên tắc triển khai
 
-- Bám sát contract trong `references/pancake-api-contract.md`
+- Bám sát contract trong `pancake-api-contract.md`
 - Tách rõ user-scoped API và page-scoped API
 - Dùng `page_access_token` qua query param cho page APIs
 - Ưu tiên polling chạy ổn định trước, webhook sau
@@ -76,7 +76,7 @@ tests/
 ### Phase 0 — Khóa contract và tài liệu
 
 Deliverables:
-- `references/pancake-api-contract.md`
+- `pancake-api-contract.md`
 - `pancake-integration-plan.md`
 
 Mục tiêu:
