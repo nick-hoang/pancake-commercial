@@ -44,22 +44,24 @@ Hãy cung cấp các thông tin sau để em cấu hình skill Pancake reminder:
 7. (Tuỳ chọn) Giờ làm việc, brand voice, noise rules, intent rules riêng
 
 ## Quy trình dùng skill
-1. Đọc `references/setup-guide.md` để nắm input bắt buộc.
-2. Đọc `references/rules.md` và `references/architecture.md` khi cần triển khai logic.
+1. Đọc `pancake-integration-plan.md` để nắm được kiến trúc module `pancake_commercial` mới nhất và các tool có sẵn.
+2. Đọc `references/setup-guide.md` để nắm input bắt buộc, và `references/rules.md` khi cần triển khai logic.
 3. Tạo config mới từ `templates/config.pages.example.json`.
-4. Sao chép `templates/pancake_monitor_template.py` làm script triển khai riêng.
-5. Điền secrets bằng env variables, secret manager hoặc file config riêng của khách hàng.
-6. Chạy debug trước khi bật cron production.
+4. Điền secrets bằng env variables, secret manager hoặc file config riêng của khách hàng.
+5. Cài đặt package nền tảng bằng `python -m pip install -e .`
+6. Chạy các CLI debug của `pancake_commercial` (như `healthcheck`, `monitor-run-once`) trước khi bật cron production.
 7. Kiểm tra `references/deployment-checklist.md` trước khi bàn giao.
 
 ## Cấu trúc skill
+- `pancake-integration-plan.md` — kế hoạch tích hợp và tool surface API của package `pancake_commercial`
 - `references/product-overview.md` — mô tả sản phẩm / use case / value proposition
 - `references/rules.md` — toàn bộ rule nghiệp vụ
 - `references/architecture.md` — kiến trúc xử lý dữ liệu và flow nhắc sale
 - `references/security.md` — nguyên tắc loại bỏ dữ liệu nhạy cảm khi đóng gói / triển khai
 - `references/setup-guide.md` — hướng dẫn setup, onboarding input, checklist thông tin cần hỏi
 - `references/deployment-checklist.md` — checklist bàn giao/production
-- `templates/pancake_monitor_template.py` — script mẫu sạch, không kèm token thật
+- `src/pancake_commercial/` — mã nguồn chính của CLI package và runtime tools
+- `templates/pancake_monitor_template.py` — script mẫu demo logic (không phải implementation chính)
 - `templates/config.pages.example.json` — cấu hình mẫu
 
 ## Ghi chú thương mại
