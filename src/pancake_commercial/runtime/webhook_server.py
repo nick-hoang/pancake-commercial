@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .dedupe import SQLiteDedupeStore, compute_event_fingerprint
+from .webhook_queue import WebhookEventWorker
 
 
 def should_trigger_reconcile(payload: dict) -> bool:
@@ -15,6 +15,7 @@ def should_trigger_reconcile(payload: dict) -> bool:
 
 def serve_webhook(host: str, port: int, path: str, state_path: str, logger=None, event_callback=None) -> None:
     store = SQLiteDedupeStore(state_path)
+    worker = WebhookEventWorker(event_callback, logger=logger) if event_callback else None
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -44,8 +45,10 @@ def serve_webhook(host: str, port: int, path: str, state_path: str, logger=None,
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
-                if not duplicate and event_callback and should_trigger_reconcile(payload):
-                    threading.Thread(target=event_callback, args=(payload,), daemon=True).start()
+                if not duplicate and worker and should_trigger_reconcile(payload):
+                    queued = worker.submit(payload)
+                    if logger and not queued:
+                        logger.error("Webhook event could not be queued event_type=%s", payload.get("event_type"))
             except Exception as exc:
                 if logger:
                     logger.error("Webhook error: %s", exc)
@@ -66,3 +69,5 @@ def serve_webhook(host: str, port: int, path: str, state_path: str, logger=None,
         server.serve_forever()
     finally:
         server.server_close()
+        if worker:
+            worker.close()
